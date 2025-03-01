@@ -4,9 +4,20 @@ const passport = require('passport');
 const authenticate = require('../authenticate');
 const router = express.Router();
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-    res.send('respond with a resource');
+/* GET users listing (Only for Admins) */
+router.get('/', authenticate.verifyUser, (req, res, next) => {
+    if (req.user.admin) {
+        User.find()
+            .then(users => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.json(users);
+            })
+            .catch(err => next(err));
+    } else {
+        res.statusCode = 403;
+        res.json({ error: 'Forbidden: Admin access only' });
+    }
 });
 
 router.post('/signup', (req, res) => {
@@ -37,11 +48,12 @@ router.post('/signup', (req, res) => {
 });
 
 router.post('/login', passport.authenticate('local', { session: false }), (req, res) => {
-    const token = authenticate.getToken({_id: req.user._id});
+    const token = authenticate.getToken({ _id: req.user._id });
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    res.json({success: true, token: token, status: 'You are successfully logged in!'});
+    res.json({ success: true, token: token, status: 'You are successfully logged in!' });
 });
+
 router.get('/logout', (req, res, next) => {
     if (req.session) {
         req.session.destroy();
